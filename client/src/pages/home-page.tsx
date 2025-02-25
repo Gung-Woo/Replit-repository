@@ -24,7 +24,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-
 export default function HomePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
@@ -32,19 +31,26 @@ export default function HomePage() {
   const [endFastNote, setEndFastNote] = useState("");
   const [showEndFastDialog, setShowEndFastDialog] = useState(false);
 
+  console.log('HomePage rendered, user:', user?.id); // Debug log
+
   // Only fetch fasts if we have a user
   const { data: fasts, isLoading: fastsLoading } = useQuery<Fast[]>({
     queryKey: ["/api/fasts"],
     enabled: !!user,
   });
 
+  console.log('Fasts data:', fasts); // Debug log
+
   const activeFast = fasts?.find((f) => f.isActive);
+  console.log('Active fast:', activeFast); // Debug log
 
   // Only fetch meals if we have an active fast
   const { data: meals } = useQuery<Meal[]>({
     queryKey: [`/api/fasts/${activeFast?.id}/meals`],
     enabled: !!activeFast,
   });
+
+  console.log('Meals data:', meals); // Debug log
 
   const startFastMutation = useMutation({
     mutationFn: async () => {
@@ -94,7 +100,7 @@ export default function HomePage() {
     return `${hours}h ${minutes}m`;
   }
 
-  if (fastsLoading) {
+  if (!user || fastsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-border" />
@@ -109,7 +115,7 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold">TREat Tracker</h1>
           <div className="flex items-center gap-4">
             <span className="text-muted-foreground">
-              Welcome, {user?.firstName}
+              Welcome, {user?.firstName} (ID: {user?.id})
             </span>
             <Button variant="ghost" onClick={() => logoutMutation.mutate()}>
               Logout

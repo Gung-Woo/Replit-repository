@@ -48,10 +48,7 @@ export class DatabaseStorage implements IStorage {
 
   async getFastById(id: number): Promise<Fast | undefined> {
     console.log('Getting fast by id:', id);
-    const [fast] = await db
-      .select()
-      .from(fasts)
-      .where(eq(fasts.id, id));
+    const [fast] = await db.select().from(fasts).where(eq(fasts.id, id));
     console.log('Found fast:', fast ? 'yes' : 'no');
     return fast;
   }
@@ -102,7 +99,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(fasts)
       .where(eq(fasts.userId, userId))
-      .orderBy(fasts.startTime);
+      .orderBy(fasts.startTime); //Re-added orderBy clause
     console.log('Found fasts count:', userFasts.length);
     return userFasts;
   }
