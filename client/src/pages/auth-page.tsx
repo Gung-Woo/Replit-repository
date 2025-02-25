@@ -8,11 +8,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, InsertUser } from "@shared/schema";
 import { useLocation } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
+import { useState } from "react";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const loginForm = useForm({
     resolver: zodResolver(
@@ -23,6 +26,35 @@ export default function AuthPage() {
   const registerForm = useForm({
     resolver: zodResolver(insertUserSchema),
   });
+
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      // Create preview URL for the selected image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRegister = async (data: InsertUser) => {
+    if (!avatarFile) {
+      alert("Please select an avatar image");
+      return;
+    }
+
+    // Create FormData and append all user data
+    const formData = new FormData();
+    formData.append("avatar", avatarFile);
+    Object.entries(data).forEach(([key, value]) => {
+      formData.append(key, value as string);
+    });
+
+    registerMutation.mutate(formData as any);
+  };
 
   if (user) {
     setLocation("/");
@@ -76,10 +108,9 @@ export default function AuthPage() {
 
               <TabsContent value="register" className="space-y-4">
                 <form
-                  onSubmit={registerForm.handleSubmit((data) =>
-                    registerMutation.mutate(data)
-                  )}
+                  onSubmit={registerForm.handleSubmit(handleRegister)}
                   className="space-y-4"
+                  encType="multipart/form-data"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -117,8 +148,23 @@ export default function AuthPage() {
                     <Input {...registerForm.register("country")} />
                   </div>
                   <div>
-                    <Label htmlFor="avatar">Avatar URL</Label>
-                    <Input {...registerForm.register("avatar")} />
+                    <Label htmlFor="avatar">Avatar</Label>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarChange}
+                        />
+                      </div>
+                      {avatarPreview && (
+                        <img
+                          src={avatarPreview}
+                          alt="Avatar preview"
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                      )}
+                    </div>
                   </div>
                   <Button
                     type="submit"

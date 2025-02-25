@@ -1,11 +1,14 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import express, { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 declare global {
   namespace Express {
@@ -14,6 +17,24 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
+
+// Configure multer for file upload
+const multerStorage = multer.diskStorage({
+  destination: function (_req: any, _file: any, cb: any) {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (_req: any, file: any, cb: any) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: multerStorage });
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -40,6 +61,8 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
@@ -58,21 +81,27 @@ export function setupAuth(app: Express) {
     done(null, user);
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    const existingUser = await storage.getUserByUsername(req.body.username);
-    if (existingUser) {
-      return res.status(400).send("Username already exists");
+  app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
+    try {
+      const existingUser = await storage.getUserByUsername(req.body.username);
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+
+      const avatarPath = req.file ? `/uploads/${req.file.filename}` : '';
+      const user = await storage.createUser({
+        ...req.body,
+        password: await hashPassword(req.body.password),
+        avatar: avatarPath
+      });
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(201).json(user);
+      });
+    } catch (error) {
+      next(error);
     }
-
-    const user = await storage.createUser({
-      ...req.body,
-      password: await hashPassword(req.body.password),
-    });
-
-    req.login(user, (err) => {
-      if (err) return next(err);
-      res.status(201).json(user);
-    });
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
