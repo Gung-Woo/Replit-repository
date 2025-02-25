@@ -40,6 +40,11 @@ export default function HomePage() {
 
   const activeFast = fasts?.find((f) => f.isActive);
 
+  const { data: meals } = useQuery<Meal[]>({
+    queryKey: [`/api/fasts/${activeFast?.id}/meals`],
+    enabled: !!activeFast,
+  });
+
   const startFastMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/fasts/start");
@@ -75,6 +80,7 @@ export default function HomePage() {
     },
     onSuccess: () => {
       setMealDescription("");
+      queryClient.invalidateQueries({ queryKey: [`/api/fasts/${activeFast?.id}/meals`] });
       toast({ title: "Meal logged successfully" });
     },
   });
@@ -127,7 +133,7 @@ export default function HomePage() {
                           onChange={(e) => setEndFastNote(e.target.value)}
                         />
                       </div>
-                      <Button 
+                      <Button
                         className="w-full"
                         onClick={() => endFastMutation.mutate(activeFast.id)}
                         disabled={endFastMutation.isPending}
@@ -161,6 +167,25 @@ export default function HomePage() {
                     <Timer className="h-5 w-5 text-muted-foreground" />
                     <span>Duration: {formatDuration(activeFast.startTime)}</span>
                   </div>
+
+                  {/* Meals Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-medium mb-2">Meals During Fast</h3>
+                    <div className="space-y-2 mb-4">
+                      {meals?.map((meal) => (
+                        <div
+                          key={meal.id}
+                          className="p-2 rounded-lg border flex justify-between items-center"
+                        >
+                          <span>{meal.description}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(meal.timestamp).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="pt-4">
                     <Input
                       placeholder="Log a meal..."
