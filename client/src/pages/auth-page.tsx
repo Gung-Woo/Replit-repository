@@ -4,20 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, InsertUser } from "@shared/schema";
+import { insertUserSchema } from "@shared/schema";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation } = useAuth();
   const [, setLocation] = useLocation();
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const { toast } = useToast();
+  console.log('AuthPage rendered, user state:', user); // Debug log
+
+  // Only redirect if we have a user AND we're not in the process of logging in
+  if (user && !loginMutation.isPending) {
+    console.log('Redirecting to home, user exists:', user);
+    setLocation("/");
+    return null;
+  }
 
   const loginForm = useForm({
     resolver: zodResolver(
@@ -28,71 +32,6 @@ export default function AuthPage() {
       password: ""
     }
   });
-
-  const registerForm = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      firstName: "",
-      lastName: "",
-      city: "",
-      state: "",
-      country: "",
-      avatar: ""
-    }
-  });
-
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      // Create preview URL for the selected image
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRegister: SubmitHandler<InsertUser> = async (data) => {
-    if (!avatarFile) {
-      toast({
-        title: "Avatar Required",
-        description: "Please select an avatar image",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Debug log the form data
-    console.log('Form data before submission:', data);
-
-    // Create FormData and append all user data
-    const formData = new FormData();
-    formData.append("avatar", avatarFile);
-    // Include all form fields
-    formData.append("username", data.username);
-    formData.append("password", data.password);
-    formData.append("firstName", data.firstName);
-    formData.append("lastName", data.lastName);
-    formData.append("city", data.city);
-    formData.append("state", data.state);
-    formData.append("country", data.country);
-
-    // Debug log the FormData entries
-    for (const [key, value] of formData.entries()) {
-      console.log(`FormData entry - ${key}:`, value);
-    }
-
-    registerMutation.mutate(formData as any);
-  };
-
-  if (user) {
-    setLocation("/");
-    return null;
-  }
 
   return (
     <div className="min-h-screen grid md:grid-cols-2">
@@ -105,7 +44,7 @@ export default function AuthPage() {
             <Tabs defaultValue="login">
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
+                {/* Removed Register tab */}
               </TabsList>
 
               <TabsContent value="login" className="space-y-4">
@@ -141,79 +80,7 @@ export default function AuthPage() {
                   </Button>
                 </form>
               </TabsContent>
-
-              <TabsContent value="register" className="space-y-4">
-                <form
-                  onSubmit={registerForm.handleSubmit(handleRegister)}
-                  className="space-y-4"
-                  encType="multipart/form-data"
-                >
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input {...registerForm.register("firstName")} />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input {...registerForm.register("lastName")} />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="username">Username</Label>
-                    <Input {...registerForm.register("username")} />
-                  </div>
-                  <div>
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      type="password"
-                      {...registerForm.register("password")}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="city">City</Label>
-                      <Input {...registerForm.register("city")} />
-                    </div>
-                    <div>
-                      <Label htmlFor="state">State</Label>
-                      <Input {...registerForm.register("state")} />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="country">Country</Label>
-                    <Input {...registerForm.register("country")} />
-                  </div>
-                  <div>
-                    <Label htmlFor="avatar">Avatar</Label>
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarChange}
-                        />
-                      </div>
-                      {avatarPreview && (
-                        <img
-                          src={avatarPreview}
-                          alt="Avatar preview"
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Register
-                  </Button>
-                </form>
-              </TabsContent>
+              {/* Removed Register TabsContent */}
             </Tabs>
           </CardContent>
         </Card>
