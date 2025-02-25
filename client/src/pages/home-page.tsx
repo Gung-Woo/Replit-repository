@@ -1,0 +1,180 @@
+import { useAuth } from "@/hooks/use-auth";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import { Fast, Meal } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Clock,
+  PlayCircle,
+  StopCircle,
+  PlusCircle,
+  History,
+  Timer,
+  User,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+export default function HomePage() {
+  const { user, logoutMutation } = useAuth();
+  const { toast } = useToast();
+  const [mealDescription, setMealDescription] = useState("");
+
+  const { data: fasts } = useQuery<Fast[]>({
+    queryKey: ["/api/fasts"],
+  });
+
+  const activeFast = fasts?.find((f) => f.isActive);
+
+  const startFastMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/fasts/start");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
+      toast({ title: "Fast started successfully" });
+    },
+  });
+
+  const endFastMutation = useMutation({
+    mutationFn: async (fastId: number) => {
+      const res = await apiRequest("POST", `/api/fasts/${fastId}/end`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
+      toast({ title: "Fast ended successfully" });
+    },
+  });
+
+  const addMealMutation = useMutation({
+    mutationFn: async ({ fastId, description }: { fastId: number; description: string }) => {
+      const res = await apiRequest("POST", `/api/fasts/${fastId}/meals`, {
+        description,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setMealDescription("");
+      toast({ title: "Meal logged successfully" });
+    },
+  });
+
+  function formatDuration(start: Date, end: Date | null = null) {
+    const endTime = end || new Date();
+    const diff = new Date(endTime).getTime() - new Date(start).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m`;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold">TREat Tracker</h1>
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" onClick={() => logoutMutation.mutate()}>
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid md:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <h2 className="text-xl font-semibold">Active Fast</h2>
+              {activeFast ? (
+                <Button
+                  variant="destructive"
+                  onClick={() => endFastMutation.mutate(activeFast.id)}
+                  disabled={endFastMutation.isPending}
+                >
+                  <StopCircle className="mr-2 h-4 w-4" />
+                  End Fast
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => startFastMutation.mutate()}
+                  disabled={startFastMutation.isPending}
+                >
+                  <PlayCircle className="mr-2 h-4 w-4" />
+                  Start Fast
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {activeFast ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                    <span>Started: {new Date(activeFast.startTime).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Timer className="h-5 w-5 text-muted-foreground" />
+                    <span>Duration: {formatDuration(activeFast.startTime)}</span>
+                  </div>
+                  <div className="pt-4">
+                    <Input
+                      placeholder="Log a meal..."
+                      value={mealDescription}
+                      onChange={(e) => setMealDescription(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && mealDescription) {
+                          addMealMutation.mutate({
+                            fastId: activeFast.id,
+                            description: mealDescription,
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  No active fast. Start one to begin tracking!
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <h2 className="text-xl font-semibold">Fasting History</h2>
+              <History className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {fasts?.filter((f) => !f.isActive).map((fast) => (
+                  <div
+                    key={fast.id}
+                    className="p-4 rounded-lg border"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{new Date(fast.startTime).toLocaleDateString()}</span>
+                      <span className="font-medium">
+                        {formatDuration(fast.startTime, fast.endTime!)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  );
+}
