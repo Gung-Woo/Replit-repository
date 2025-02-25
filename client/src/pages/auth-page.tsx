@@ -69,11 +69,14 @@ export default function AuthPage() {
     // Create FormData and append all user data
     const formData = new FormData();
     formData.append("avatar", avatarFile);
-    Object.entries(data).forEach(([key, value]) => {
-      if (key !== "avatar") {
-        formData.append(key, value as string);
-      }
-    });
+    // Include all form fields
+    formData.append("username", data.username);
+    formData.append("password", data.password);
+    formData.append("firstName", data.firstName);
+    formData.append("lastName", data.lastName);
+    formData.append("city", data.city);
+    formData.append("state", data.state);
+    formData.append("country", data.country);
 
     registerMutation.mutate(formData as any);
   };
