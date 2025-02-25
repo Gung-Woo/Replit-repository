@@ -9,19 +9,20 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect } from "react";
 
 export default function AuthPage() {
   const { user, loginMutation } = useAuth();
   const [, setLocation] = useLocation();
   console.log('AuthPage rendered, user state:', user); // Debug log
 
-  // Only redirect if we have a user AND we're not in the process of logging in
-  if (user && !loginMutation.isPending) {
-    console.log('Redirecting to home, user exists:', user);
-    setLocation("/");
-    return null;
-  }
+  useEffect(() => {
+    // Only redirect if we have a user AND we're not in the process of logging in
+    if (user && !loginMutation.isPending) {
+      console.log('Redirecting to home, user exists:', user);
+      setLocation("/");
+    }
+  }, [user, loginMutation.isPending, setLocation]);
 
   const loginForm = useForm({
     resolver: zodResolver(
