@@ -20,6 +20,7 @@ export const fasts = pgTable("fasts", {
   startTime: timestamp("startTime").notNull(),
   endTime: timestamp("endTime"),
   isActive: boolean("isActive").notNull().default(true),
+  note: text("note"),  // Added note field
 });
 
 export const meals = pgTable("meals", {

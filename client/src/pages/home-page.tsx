@@ -23,11 +23,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 export default function HomePage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [mealDescription, setMealDescription] = useState("");
+  const [endFastNote, setEndFastNote] = useState("");
+  const [showEndFastDialog, setShowEndFastDialog] = useState(false);
 
   const { data: fasts } = useQuery<Fast[]>({
     queryKey: ["/api/fasts"],
@@ -48,10 +53,14 @@ export default function HomePage() {
 
   const endFastMutation = useMutation({
     mutationFn: async (fastId: number) => {
-      const res = await apiRequest("POST", `/api/fasts/${fastId}/end`);
+      const res = await apiRequest("POST", `/api/fasts/${fastId}/end`, {
+        note: endFastNote
+      });
       return res.json();
     },
     onSuccess: () => {
+      setEndFastNote("");
+      setShowEndFastDialog(false);
       queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
       toast({ title: "Fast ended successfully" });
     },
@@ -97,14 +106,40 @@ export default function HomePage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <h2 className="text-xl font-semibold">Active Fast</h2>
               {activeFast ? (
-                <Button
-                  variant="destructive"
-                  onClick={() => endFastMutation.mutate(activeFast.id)}
-                  disabled={endFastMutation.isPending}
-                >
-                  <StopCircle className="mr-2 h-4 w-4" />
-                  End Fast
-                </Button>
+                <Dialog open={showEndFastDialog} onOpenChange={setShowEndFastDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive">
+                      <StopCircle className="mr-2 h-4 w-4" />
+                      End Fast
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>End Fast</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="note">Add a note about your fast (optional)</Label>
+                        <Textarea
+                          id="note"
+                          placeholder="How did this fast go? How do you feel?"
+                          value={endFastNote}
+                          onChange={(e) => setEndFastNote(e.target.value)}
+                        />
+                      </div>
+                      <Button 
+                        className="w-full"
+                        onClick={() => endFastMutation.mutate(activeFast.id)}
+                        disabled={endFastMutation.isPending}
+                      >
+                        {endFastMutation.isPending && (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        )}
+                        End Fast
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               ) : (
                 <Button
                   onClick={() => startFastMutation.mutate()}
@@ -168,6 +203,11 @@ export default function HomePage() {
                         {formatDuration(fast.startTime, fast.endTime!)}
                       </span>
                     </div>
+                    {fast.note && (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {fast.note}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

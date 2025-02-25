@@ -58,14 +58,15 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async endFast(id: number, endTime: Date): Promise<Fast> {
+  async endFast(id: number, endTime: Date, note?: string): Promise<Fast> {
     const fast = this.fasts.get(id);
     if (!fast) throw new Error("Fast not found");
-    
+
     const updatedFast = {
       ...fast,
       endTime,
       isActive: false,
+      note: note || null,
     };
     this.fasts.set(id, updatedFast);
     return updatedFast;

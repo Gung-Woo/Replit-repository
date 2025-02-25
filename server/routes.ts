@@ -21,8 +21,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/fasts/:id/end", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    
-    const fast = await storage.endFast(parseInt(req.params.id), new Date());
+
+    const fast = await storage.endFast(
+      parseInt(req.params.id), 
+      new Date(),
+      req.body.note
+    );
     res.json(fast);
   });
 
