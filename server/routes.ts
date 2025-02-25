@@ -32,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const updatedFast = await storage.endFast(
-      parseInt(req.params.id), 
+      parseInt(req.params.id),
       new Date(),
       req.body.note
     );
@@ -41,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/fasts", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    console.log('Getting fasts for user:', req.user!.id);
+    console.log('Getting fasts for user:', req.user!.id, 'user object:', req.user);
 
     const fasts = await storage.getFasts(req.user!.id);
     console.log('Found fasts:', fasts.length, 'for user:', req.user!.id);
@@ -68,7 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/fasts/:id/meals", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    console.log('Getting meals for user:', req.user!.id, 'fast id:', req.params.id);
+    console.log('Getting meals for user:', req.user!.id, 'fast id:', req.params.id, 'user object:', req.user);
 
     // Verify fast belongs to user
     const fast = await storage.getFastById(parseInt(req.params.id));

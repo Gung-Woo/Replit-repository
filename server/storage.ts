@@ -68,17 +68,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveFast(userId: number): Promise<Fast | undefined> {
-    console.log('Getting active fast for user:', userId);
+    console.log('Getting active fast for user:', userId, 'with type:', typeof userId);
     const [fast] = await db
       .select()
       .from(fasts)
       .where(
         and(
-          eq(fasts.userId, userId),
+          eq(fasts.userId, Number(userId)), // Ensure userId is a number
           eq(fasts.isActive, true)
         )
       );
-    console.log('Found active fast:', fast ? 'yes' : 'no');
+    console.log('Found active fast:', fast);
     return fast;
   }
 
@@ -94,13 +94,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFasts(userId: number): Promise<Fast[]> {
-    console.log('Getting all fasts for user:', userId);
+    console.log('Getting all fasts for user:', userId, 'with type:', typeof userId);
     const userFasts = await db
       .select()
       .from(fasts)
-      .where(eq(fasts.userId, userId))
-      .orderBy(fasts.startTime); //Re-added orderBy clause
-    console.log('Found fasts count:', userFasts.length);
+      .where(eq(fasts.userId, Number(userId))) // Ensure userId is a number
+      .orderBy(fasts.startTime);
+    console.log('Found fasts:', userFasts);
     return userFasts;
   }
 
