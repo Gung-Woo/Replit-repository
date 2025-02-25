@@ -83,15 +83,33 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
     try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
+      // Validate required fields
+      const { username, password, firstName, lastName, city, state, country } = req.body;
+
+      if (!username || !password || !firstName || !lastName || !city || !state || !country) {
+        return res.status(400).send("All fields are required");
+      }
+
+      const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).send("Username already exists");
       }
 
-      const avatarPath = req.file ? `/uploads/${req.file.filename}` : '';
+      if (!req.file) {
+        return res.status(400).send("Avatar image is required");
+      }
+
+      const avatarPath = `/uploads/${req.file.filename}`;
+      const hashedPassword = await hashPassword(password);
+
       const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
+        username,
+        password: hashedPassword,
+        firstName,
+        lastName,
+        city,
+        state,
+        country,
         avatar: avatarPath
       });
 
