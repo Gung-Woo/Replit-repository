@@ -83,10 +83,23 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
     try {
+      // Debug log
+      console.log('Registration request body:', req.body);
+      console.log('Registration file:', req.file);
+
       // Validate required fields
       const { username, password, firstName, lastName, city, state, country } = req.body;
 
       if (!username || !password || !firstName || !lastName || !city || !state || !country) {
+        console.log('Missing fields:', {
+          username: !username,
+          password: !password,
+          firstName: !firstName,
+          lastName: !lastName,
+          city: !city,
+          state: !state,
+          country: !country
+        });
         return res.status(400).send("All fields are required");
       }
 
@@ -118,6 +131,7 @@ export function setupAuth(app: Express) {
         res.status(201).json(user);
       });
     } catch (error) {
+      console.error('Registration error:', error);
       next(error);
     }
   });
