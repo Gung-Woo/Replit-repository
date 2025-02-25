@@ -66,19 +66,43 @@ export function setupAuth(app: Express) {
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
-      const user = await storage.getUserByUsername(username);
-      if (!user || !(await comparePasswords(password, user.password))) {
-        return done(null, false);
-      } else {
+      try {
+        console.log('Login attempt for username:', username);
+        const user = await storage.getUserByUsername(username);
+        console.log('User found:', user ? 'yes' : 'no');
+
+        if (!user) {
+          console.log('Login failed: User not found');
+          return done(null, false);
+        }
+
+        const passwordMatch = await comparePasswords(password, user.password);
+        console.log('Password match:', passwordMatch ? 'yes' : 'no');
+
+        if (!passwordMatch) {
+          console.log('Login failed: Password mismatch');
+          return done(null, false);
+        }
+
+        console.log('Login successful');
         return done(null, user);
+      } catch (error) {
+        console.error('Login error:', error);
+        return done(error);
       }
     }),
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
-    const user = await storage.getUser(id);
-    done(null, user);
+    try {
+      const user = await storage.getUser(id);
+      console.log('Deserialize user:', id, user ? 'found' : 'not found');
+      done(null, user);
+    } catch (error) {
+      console.error('Deserialize error:', error);
+      done(error);
+    }
   });
 
   app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
@@ -149,6 +173,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    console.log('Login successful, sending user data:', req.user);
     res.status(200).json(req.user);
   });
 

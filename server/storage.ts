@@ -1,5 +1,5 @@
 import { IStorage } from "./types";
-import { User, InsertUser, Fast, InsertFast, Meal, InsertMeal } from "@shared/schema";
+import { User, InsertUser, Fast, Meal } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -23,19 +23,29 @@ export class MemStorage implements IStorage {
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    console.log('Getting user by id:', id);
+    const user = this.users.get(id);
+    console.log('Found user:', user ? 'yes' : 'no');
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
+    console.log('Getting user by username:', username);
+    const user = Array.from(this.users.values()).find(
       (user) => user.username === username,
     );
+    console.log('Found user:', user ? 'yes' : 'no');
+    if (user) {
+      console.log('User data:', { ...user, password: '[REDACTED]' });
+    }
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
+    console.log('Created new user:', { ...user, password: '[REDACTED]' });
     return user;
   }
 
@@ -47,6 +57,7 @@ export class MemStorage implements IStorage {
       startTime,
       endTime: null,
       isActive: true,
+      note: null,
     };
     this.fasts.set(id, fast);
     return fast;
