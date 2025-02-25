@@ -66,6 +66,9 @@ export default function AuthPage() {
       return;
     }
 
+    // Debug log the form data
+    console.log('Form data before submission:', data);
+
     // Create FormData and append all user data
     const formData = new FormData();
     formData.append("avatar", avatarFile);
@@ -77,6 +80,11 @@ export default function AuthPage() {
     formData.append("city", data.city);
     formData.append("state", data.state);
     formData.append("country", data.country);
+
+    // Debug log the FormData entries
+    for (const [key, value] of formData.entries()) {
+      console.log(`FormData entry - ${key}:`, value);
+    }
 
     registerMutation.mutate(formData as any);
   };

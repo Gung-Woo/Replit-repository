@@ -83,7 +83,8 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
     try {
-      // Debug log
+      // Debug logs
+      console.log('Registration request headers:', req.headers);
       console.log('Registration request body:', req.body);
       console.log('Registration file:', req.file);
 
@@ -114,6 +115,17 @@ export function setupAuth(app: Express) {
 
       const avatarPath = `/uploads/${req.file.filename}`;
       const hashedPassword = await hashPassword(password);
+
+      // Debug log the data being sent to storage
+      console.log('Creating user with data:', {
+        username,
+        firstName,
+        lastName,
+        city,
+        state,
+        country,
+        avatar: avatarPath
+      });
 
       const user = await storage.createUser({
         username,
