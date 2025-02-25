@@ -2,7 +2,7 @@ import { IStorage } from "./types";
 import { users, type User, type InsertUser, type Fast, type Meal, fasts, meals } from "@shared/schema";
 import session from "express-session";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 
@@ -46,6 +46,14 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getFastById(id: number): Promise<Fast | undefined> {
+    const [fast] = await db
+      .select()
+      .from(fasts)
+      .where(eq(fasts.id, id));
+    return fast;
+  }
+
   async createFast(userId: number, startTime: Date): Promise<Fast> {
     const [fast] = await db
       .insert(fasts)
@@ -62,8 +70,12 @@ export class DatabaseStorage implements IStorage {
     const [fast] = await db
       .select()
       .from(fasts)
-      .where(eq(fasts.userId, userId))
-      .where(eq(fasts.isActive, true));
+      .where(
+        and(
+          eq(fasts.userId, userId),
+          eq(fasts.isActive, true)
+        )
+      );
     return fast;
   }
 
