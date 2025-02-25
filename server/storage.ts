@@ -1,116 +1,108 @@
 import { IStorage } from "./types";
-import { User, InsertUser, Fast, Meal } from "@shared/schema";
+import { users, type User, type InsertUser, type Fast, type Meal, fasts, meals } from "@shared/schema";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private fasts: Map<number, Fast>;
-  private meals: Map<number, Meal>;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
-  currentId: number;
 
   constructor() {
-    this.users = new Map();
-    this.fasts = new Map();
-    this.meals = new Map();
-    this.currentId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
     console.log('Getting user by id:', id);
-    const user = this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     console.log('Found user:', user ? 'yes' : 'no');
-    console.log('Current users in storage:', Array.from(this.users.entries()));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     console.log('Getting user by username:', username);
-    console.log('All users in storage:', Array.from(this.users.entries()));
-
-    const user = Array.from(this.users.values()).find(
-      (user) => user.username.toLowerCase() === username.toLowerCase(),
-    );
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username.toLowerCase()));
 
     console.log('Found user:', user ? 'yes' : 'no');
-    if (user) {
-      console.log('User data:', { ...user, password: '[REDACTED]' });
-    }
     return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
-    console.log('Creating user with data:', { ...user, password: '[REDACTED]' });
-    this.users.set(id, user);
-    console.log('Users after creation:', Array.from(this.users.entries()));
+    console.log('Creating user:', {...insertUser, password: '[REDACTED]'});
+    const [user] = await db
+      .insert(users)
+      .values({...insertUser, username: insertUser.username.toLowerCase()})
+      .returning();
+    console.log('Created user:', {...user, password: '[REDACTED]'});
     return user;
   }
 
   async createFast(userId: number, startTime: Date): Promise<Fast> {
-    const id = this.currentId++;
-    const fast: Fast = {
-      id,
-      userId,
-      startTime,
-      endTime: null,
-      isActive: true,
-      note: null,
-    };
-    this.fasts.set(id, fast);
+    const [fast] = await db
+      .insert(fasts)
+      .values({
+        userId,
+        startTime,
+        isActive: true,
+      })
+      .returning();
     return fast;
   }
 
   async getActiveFast(userId: number): Promise<Fast | undefined> {
-    return Array.from(this.fasts.values()).find(
-      (fast) => fast.userId === userId && fast.isActive
-    );
+    const [fast] = await db
+      .select()
+      .from(fasts)
+      .where(eq(fasts.userId, userId))
+      .where(eq(fasts.isActive, true));
+    return fast;
   }
 
   async endFast(id: number, endTime: Date, note?: string): Promise<Fast> {
-    const fast = this.fasts.get(id);
-    if (!fast) throw new Error("Fast not found");
-
-    const updatedFast = {
-      ...fast,
-      endTime,
-      isActive: false,
-      note: note || null,
-    };
-    this.fasts.set(id, updatedFast);
-    return updatedFast;
+    const [fast] = await db
+      .update(fasts)
+      .set({ endTime, isActive: false, note: note || null })
+      .where(eq(fasts.id, id))
+      .returning();
+    return fast;
   }
 
   async getFasts(userId: number): Promise<Fast[]> {
-    return Array.from(this.fasts.values())
-      .filter(fast => fast.userId === userId)
-      .sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+    return await db
+      .select()
+      .from(fasts)
+      .where(eq(fasts.userId, userId))
+      .orderBy(fasts.startTime);
   }
 
   async createMeal(fastId: number, description: string): Promise<Meal> {
-    const id = this.currentId++;
-    const meal: Meal = {
-      id,
-      fastId,
-      description,
-      timestamp: new Date(),
-    };
-    this.meals.set(id, meal);
+    const [meal] = await db
+      .insert(meals)
+      .values({
+        fastId,
+        description,
+        timestamp: new Date(),
+      })
+      .returning();
     return meal;
   }
 
   async getMealsForFast(fastId: number): Promise<Meal[]> {
-    return Array.from(this.meals.values())
-      .filter(meal => meal.fastId === fastId)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return await db
+      .select()
+      .from(meals)
+      .where(eq(meals.fastId, fastId))
+      .orderBy(meals.timestamp);
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
