@@ -4,27 +4,43 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useForm } from "react-hook-form";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, InsertUser } from "@shared/schema";
 import { useLocation } from "wouter";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AuthPage() {
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const loginForm = useForm({
     resolver: zodResolver(
       insertUserSchema.pick({ username: true, password: true })
     ),
+    defaultValues: {
+      username: "",
+      password: ""
+    }
   });
 
-  const registerForm = useForm({
+  const registerForm = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      city: "",
+      state: "",
+      country: "",
+      avatar: ""
+    }
   });
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,9 +56,13 @@ export default function AuthPage() {
     }
   };
 
-  const handleRegister = async (data: InsertUser) => {
+  const handleRegister: SubmitHandler<InsertUser> = async (data) => {
     if (!avatarFile) {
-      alert("Please select an avatar image");
+      toast({
+        title: "Avatar Required",
+        description: "Please select an avatar image",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -50,7 +70,9 @@ export default function AuthPage() {
     const formData = new FormData();
     formData.append("avatar", avatarFile);
     Object.entries(data).forEach(([key, value]) => {
-      formData.append(key, value as string);
+      if (key !== "avatar") {
+        formData.append(key, value as string);
+      }
     });
 
     registerMutation.mutate(formData as any);
@@ -78,7 +100,10 @@ export default function AuthPage() {
               <TabsContent value="login" className="space-y-4">
                 <form
                   onSubmit={loginForm.handleSubmit((data) =>
-                    loginMutation.mutate(data)
+                    loginMutation.mutate({
+                      username: data.username,
+                      password: data.password
+                    })
                   )}
                   className="space-y-4"
                 >
