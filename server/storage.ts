@@ -26,14 +26,18 @@ export class MemStorage implements IStorage {
     console.log('Getting user by id:', id);
     const user = this.users.get(id);
     console.log('Found user:', user ? 'yes' : 'no');
+    console.log('Current users in storage:', Array.from(this.users.entries()));
     return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     console.log('Getting user by username:', username);
+    console.log('All users in storage:', Array.from(this.users.entries()));
+
     const user = Array.from(this.users.values()).find(
-      (user) => user.username === username,
+      (user) => user.username.toLowerCase() === username.toLowerCase(),
     );
+
     console.log('Found user:', user ? 'yes' : 'no');
     if (user) {
       console.log('User data:', { ...user, password: '[REDACTED]' });
@@ -44,8 +48,9 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = this.currentId++;
     const user: User = { ...insertUser, id };
+    console.log('Creating user with data:', { ...user, password: '[REDACTED]' });
     this.users.set(id, user);
-    console.log('Created new user:', { ...user, password: '[REDACTED]' });
+    console.log('Users after creation:', Array.from(this.users.entries()));
     return user;
   }
 
