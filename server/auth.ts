@@ -99,7 +99,11 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => {
+    console.log('Serializing user:', user.id);
+    done(null, user.id)
+  });
+
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await storage.getUser(id);
@@ -158,7 +162,7 @@ export function setupAuth(app: Express) {
       });
 
       const user = await storage.createUser({
-        username,
+        username: username.toLowerCase(), // Ensure username is always lowercase
         password: hashedPassword,
         firstName,
         lastName,

@@ -11,10 +11,8 @@ import {
   Clock,
   PlayCircle,
   StopCircle,
-  PlusCircle,
-  History,
   Timer,
-  User,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+
 
 export default function HomePage() {
   const { user, logoutMutation } = useAuth();
@@ -34,12 +32,15 @@ export default function HomePage() {
   const [endFastNote, setEndFastNote] = useState("");
   const [showEndFastDialog, setShowEndFastDialog] = useState(false);
 
-  const { data: fasts } = useQuery<Fast[]>({
+  // Only fetch fasts if we have a user
+  const { data: fasts, isLoading: fastsLoading } = useQuery<Fast[]>({
     queryKey: ["/api/fasts"],
+    enabled: !!user,
   });
 
   const activeFast = fasts?.find((f) => f.isActive);
 
+  // Only fetch meals if we have an active fast
   const { data: meals } = useQuery<Meal[]>({
     queryKey: [`/api/fasts/${activeFast?.id}/meals`],
     enabled: !!activeFast,
@@ -93,12 +94,23 @@ export default function HomePage() {
     return `${hours}h ${minutes}m`;
   }
 
+  if (fastsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-border" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">TREat Tracker</h1>
           <div className="flex items-center gap-4">
+            <span className="text-muted-foreground">
+              Welcome, {user?.firstName}
+            </span>
             <Button variant="ghost" onClick={() => logoutMutation.mutate()}>
               Logout
             </Button>
@@ -211,9 +223,8 @@ export default function HomePage() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <h2 className="text-xl font-semibold">Fasting History</h2>
-              <History className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
