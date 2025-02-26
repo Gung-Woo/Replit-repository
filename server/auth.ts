@@ -19,9 +19,9 @@ declare global {
 const scryptAsync = promisify(scrypt);
 
 // Configure multer for file upload
+const uploadDir = path.join(process.cwd(), 'uploads');
 const multerStorage = multer.diskStorage({
   destination: function (_req: any, _file: any, cb: any) {
-    const uploadDir = path.join(process.cwd(), 'uploads');
     // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir);
@@ -50,12 +50,6 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Ensure uploads directory exists at startup
-  const uploadDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir);
-  }
-
   // Ensure we have a strong session secret
   if (!process.env.SESSION_SECRET) {
     throw new Error("SESSION_SECRET environment variable is required");
@@ -77,18 +71,22 @@ export function setupAuth(app: Express) {
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Create uploads directory if it doesn't exist
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir);
+  }
+
   // Serve uploaded files
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  app.use('/uploads', express.static(uploadDir));
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
-          console.log('Login failed for username:', username);
           return done(null, false, { message: "Invalid username or password" });
         }
-        console.log('Login successful for user:', user.id);
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -96,55 +94,17 @@ export function setupAuth(app: Express) {
     }),
   );
 
-  passport.serializeUser((user, done) => {
-    console.log('Serializing user to session:', user.id);
-    done(null, user.id);
-  });
-
+  passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: number, done) => {
     try {
-      console.log('Deserializing user from session:', id);
       const user = await storage.getUser(id);
       if (!user) {
-        console.log('User not found during deserialization:', id);
         return done(null, false);
       }
-      console.log('User deserialized successfully:', user.id);
       done(null, user);
     } catch (err) {
-      console.error('Error deserializing user:', err);
       done(err);
     }
-  });
-
-  app.get("/api/user", (req, res) => {
-    console.log('GET /api/user - isAuthenticated:', req.isAuthenticated(), 'user:', req.user?.id);
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
-  });
-
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Login failed" });
-      }
-      req.logIn(user, (err) => {
-        if (err) return next(err);
-        console.log('POST /api/login - Successful login for user:', user.id);
-        res.json(user);
-      });
-    })(req, res, next);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    const userId = req.user?.id;
-    console.log('POST /api/logout - Logging out user:', userId);
-    req.logout((err) => {
-      if (err) return next(err);
-      console.log('Logout successful for user:', userId);
-      res.sendStatus(200);
-    });
   });
 
   app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
@@ -162,7 +122,6 @@ export function setupAuth(app: Express) {
       // Hash password
       const hashedPassword = await hashPassword(password);
 
-      //Create new user
       if (!req.file) {
         return res.status(400).send("Avatar image is required");
       }
@@ -179,16 +138,37 @@ export function setupAuth(app: Express) {
         avatar: avatarPath
       });
 
-      console.log('POST /api/register - Created new user:', user.id);
-
-      // Log the user in
       req.login(user, (err) => {
         if (err) return next(err);
-        console.log('Auto-login successful for new user:', user.id);
         res.status(201).json(user);
       });
     } catch (error) {
       next(error);
     }
+  });
+
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Login failed" });
+      }
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+        res.json(user);
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.sendStatus(200);
+    });
+  });
+
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    res.json(req.user);
   });
 }
