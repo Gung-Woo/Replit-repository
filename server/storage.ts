@@ -130,7 +130,7 @@ export class DatabaseStorage implements IStorage {
     console.log('Found meals:', fastMeals.map(m => ({
       id: m.id,
       fastId: m.fastId,
-      timestamp: m.timestamp.toISOString(),
+      timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
       description: m.description
     })));
     return fastMeals;
