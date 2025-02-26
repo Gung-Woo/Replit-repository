@@ -219,13 +219,47 @@ export default function HomePage() {
                       onChange={(e) => setMealDescription(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && mealDescription) {
+                          console.log("Attempting to add meal:", {
+                            fastId: activeFast!.id,
+                            description: mealDescription
+                          });
+
+                          addMealMutation.mutate(
+                            {
+                              fastId: activeFast!.id,
+                              description: mealDescription,
+                            },
+                            {
+                              onError: (error) => {
+                                console.error("Failed to add meal:", error);
+                                toast({
+                                  title: "Failed to add meal",
+                                  description: error.message,
+                                  variant: "destructive"
+                                });
+                              }
+                            }
+                          );
+                        }
+                      }}
+                    />
+                    <Button 
+                      className="mt-2 w-full"
+                      onClick={() => {
+                        if (mealDescription) {
                           addMealMutation.mutate({
                             fastId: activeFast!.id,
                             description: mealDescription,
                           });
                         }
                       }}
-                    />
+                      disabled={addMealMutation.isPending || !mealDescription}
+                    >
+                      {addMealMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Add Meal
+                    </Button>
                   </div>
                 </div>
               ) : (

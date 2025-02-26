@@ -127,13 +127,15 @@ export function registerRoutes(app: Express): Server {
       id: userId,
       idType: typeof userId,
       username: req.user!.username,
-      fastId: fastId
+      fastId: fastId,
+      description: req.body.description
     });
 
     try {
       const fast = await storage.getFastById(fastId);
 
       if (!fast) {
+        console.log('Fast not found:', fastId);
         return res.status(404).json({ message: "Fast not found" });
       }
 
