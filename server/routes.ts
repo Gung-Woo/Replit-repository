@@ -123,11 +123,9 @@ export function registerRoutes(app: Express): Server {
 
     const userId = Number(req.user!.id);
     const fastId = Number(req.params.id);
-    console.log('POST /api/fasts/meals - User:', {
-      id: userId,
-      idType: typeof userId,
-      username: req.user!.username,
-      fastId: fastId,
+    console.log('POST /api/fasts/:id/meals - Input:', {
+      userId,
+      fastId,
       description: req.body.description
     });
 
@@ -145,7 +143,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const meal = await storage.createMeal(fastId, req.body.description);
-      console.log('Created meal for fast:', fastId);
+      console.log('Created meal:', meal);
       res.json(meal);
     } catch (error) {
       console.error('Error creating meal:', error);

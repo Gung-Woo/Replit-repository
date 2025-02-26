@@ -71,18 +71,30 @@ export default function HomePage() {
     },
   });
 
+  // Update the mutation definition
   const addMealMutation = useMutation({
     mutationFn: async ({ fastId, description }: { fastId: number; description: string }) => {
+      console.log("Sending meal creation request:", { fastId, description });
       const res = await apiRequest("POST", `/api/fasts/${fastId}/meals`, {
         description,
       });
-      return res.json();
+      const data = await res.json();
+      console.log("Meal creation response:", data);
+      return data;
     },
     onSuccess: () => {
       setMealDescription("");
       queryClient.invalidateQueries({ queryKey: ["/api/fasts", activeFast?.id, "meals"] });
       toast({ title: "Meal logged successfully" });
     },
+    onError: (error: Error) => {
+      console.error("Failed to add meal:", error);
+      toast({
+        title: "Failed to add meal",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   function formatDuration(start: Date, end: Date | null = null) {
