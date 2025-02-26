@@ -114,7 +114,7 @@ export class DatabaseStorage implements IStorage {
         .values({
           fastId,
           description,
-          // mealTime will be set by defaultNow()
+          mealTime: new Date() // Explicitly set mealTime
         })
         .returning();
       console.log('Successfully created meal:', meal);
