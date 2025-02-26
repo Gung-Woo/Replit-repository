@@ -197,13 +197,13 @@ export default function HomePage() {
                         >
                           <span>{meal.description}</span>
                           <span className="text-sm text-muted-foreground">
-                            {typeof meal.timestamp === 'string' 
-                              ? new Date(meal.timestamp.includes('T') 
-                                  ? meal.timestamp 
-                                  : meal.timestamp.replace(' ', 'T')
+                            {typeof meal.mealTime === 'string' 
+                              ? new Date(meal.mealTime.includes('T') 
+                                  ? meal.mealTime 
+                                  : meal.mealTime.replace(' ', 'T')
                                 ).toLocaleString()
-                              : meal.timestamp instanceof Date 
-                                ? meal.timestamp.toLocaleString()
+                              : meal.mealTime instanceof Date 
+                                ? meal.mealTime.toLocaleString()
                                 : 'No time recorded'
                             }
                           </span>

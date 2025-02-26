@@ -107,33 +107,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMeal(fastId: number, description: string): Promise<Meal> {
-    console.log('Creating meal for fast:', fastId);
-    const [meal] = await db
-      .insert(meals)
-      .values({
-        fastId,
-        description,
-        timestamp: new Date(),
-      })
-      .returning();
-    console.log('Created meal:', {id: meal.id, fastId: meal.fastId});
-    return meal;
+    console.log('Creating meal - Input:', { fastId, description });
+    try {
+      const [meal] = await db
+        .insert(meals)
+        .values({
+          fastId,
+          description,
+          // mealTime will be set by defaultNow()
+        })
+        .returning();
+      console.log('Successfully created meal:', meal);
+      return meal;
+    } catch (error) {
+      console.error('Error creating meal:', error);
+      throw error;
+    }
   }
 
   async getMealsForFast(fastId: number): Promise<Meal[]> {
     console.log('Getting meals for fast:', fastId);
-    const fastMeals = await db
-      .select()
-      .from(meals)
-      .where(eq(meals.fastId, fastId))
-      .orderBy(meals.timestamp);
-    console.log('Found meals:', fastMeals.map(m => ({
-      id: m.id,
-      fastId: m.fastId,
-      timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
-      description: m.description
-    })));
-    return fastMeals;
+    try {
+      const fastMeals = await db
+        .select()
+        .from(meals)
+        .where(eq(meals.fastId, fastId))
+        .orderBy(meals.mealTime);
+      console.log('Found meals:', fastMeals);
+      return fastMeals;
+    } catch (error) {
+      console.error('Error getting meals:', error);
+      throw error;
+    }
   }
 }
 

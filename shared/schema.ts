@@ -27,7 +27,7 @@ export const meals = pgTable("meals", {
   id: serial("id").primaryKey(),
   fastId: integer("fastId").notNull(),
   description: text("description").notNull(),
-  timestamp: timestamp("timestamp").notNull(), 
+  mealTime: timestamp("mealTime").notNull().defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users);
