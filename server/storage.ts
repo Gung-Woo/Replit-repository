@@ -127,7 +127,12 @@ export class DatabaseStorage implements IStorage {
       .from(meals)
       .where(eq(meals.fastId, fastId))
       .orderBy(meals.timestamp);
-    console.log('Found meals:', fastMeals.map(m => ({id: m.id, fastId: m.fastId})));
+    console.log('Found meals:', fastMeals.map(m => ({
+      id: m.id,
+      fastId: m.fastId,
+      timestamp: m.timestamp.toISOString(),
+      description: m.description
+    })));
     return fastMeals;
   }
 }

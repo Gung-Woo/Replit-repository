@@ -197,7 +197,7 @@ export default function HomePage() {
                         >
                           <span>{meal.description}</span>
                           <span className="text-sm text-muted-foreground">
-                            {new Date(meal.timestamp).toLocaleTimeString()}
+                            {new Date(meal.timestamp.replace(' ', 'T')).toLocaleString()}
                           </span>
                         </div>
                       ))}
@@ -212,7 +212,7 @@ export default function HomePage() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && mealDescription) {
                           addMealMutation.mutate({
-                            fastId: activeFast.id,
+                            fastId: activeFast!.id,
                             description: mealDescription,
                           });
                         }
