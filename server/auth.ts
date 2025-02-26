@@ -56,11 +56,21 @@ export function setupAuth(app: Express) {
     fs.mkdirSync(uploadDir);
   }
 
+  // Ensure we have a strong session secret
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET environment variable is required");
+  }
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    }
   };
 
   app.set("trust proxy", 1);
@@ -73,96 +83,93 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        console.log('Login attempt for username:', username);
         const user = await storage.getUserByUsername(username);
-        console.log('User found:', user ? 'yes' : 'no');
-
-        if (!user) {
-          console.log('Login failed: User not found');
-          return done(null, false);
+        if (!user || !(await comparePasswords(password, user.password))) {
+          console.log('Login failed for username:', username);
+          return done(null, false, { message: "Invalid username or password" });
         }
-
-        const passwordMatch = await comparePasswords(password, user.password);
-        console.log('Password match:', passwordMatch ? 'yes' : 'no');
-
-        if (!passwordMatch) {
-          console.log('Login failed: Password mismatch');
-          return done(null, false);
-        }
-
-        console.log('Login successful');
+        console.log('Login successful for user:', user.id);
         return done(null, user);
-      } catch (error) {
-        console.error('Login error:', error);
-        return done(error);
+      } catch (err) {
+        return done(err);
       }
     }),
   );
 
   passport.serializeUser((user, done) => {
-    console.log('Serializing user:', user.id);
-    done(null, user.id)
+    console.log('Serializing user to session:', user.id);
+    done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
     try {
+      console.log('Deserializing user from session:', id);
       const user = await storage.getUser(id);
-      console.log('Deserialize user:', id, user ? 'found' : 'not found');
+      if (!user) {
+        console.log('User not found during deserialization:', id);
+        return done(null, false);
+      }
+      console.log('User deserialized successfully:', user.id);
       done(null, user);
-    } catch (error) {
-      console.error('Deserialize error:', error);
-      done(error);
+    } catch (err) {
+      console.error('Error deserializing user:', err);
+      done(err);
     }
+  });
+
+  app.get("/api/user", (req, res) => {
+    console.log('GET /api/user - isAuthenticated:', req.isAuthenticated(), 'user:', req.user?.id);
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    res.json(req.user);
+  });
+
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Login failed" });
+      }
+      req.logIn(user, (err) => {
+        if (err) return next(err);
+        console.log('POST /api/login - Successful login for user:', user.id);
+        res.json(user);
+      });
+    })(req, res, next);
+  });
+
+  app.post("/api/logout", (req, res, next) => {
+    const userId = req.user?.id;
+    console.log('POST /api/logout - Logging out user:', userId);
+    req.logout((err) => {
+      if (err) return next(err);
+      console.log('Logout successful for user:', userId);
+      res.sendStatus(200);
+    });
   });
 
   app.post("/api/register", upload.single('avatar'), async (req, res, next) => {
     try {
-      // Debug logs
-      console.log('Registration request headers:', req.headers);
-      console.log('Registration request body:', req.body);
-      console.log('Registration file:', req.file);
-
-      // Validate required fields
       const { username, password, firstName, lastName, city, state, country } = req.body;
 
-      if (!username || !password || !firstName || !lastName || !city || !state || !country) {
-        console.log('Missing fields:', {
-          username: !username,
-          password: !password,
-          firstName: !firstName,
-          lastName: !lastName,
-          city: !city,
-          state: !state,
-          country: !country
-        });
-        return res.status(400).send("All fields are required");
-      }
-
+      // Check if username already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).send("Username already exists");
+        return res.status(400).json({
+          message: "Username already exists",
+        });
       }
 
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      //Create new user
       if (!req.file) {
         return res.status(400).send("Avatar image is required");
       }
-
       const avatarPath = `/uploads/${req.file.filename}`;
-      const hashedPassword = await hashPassword(password);
-
-      // Debug log the data being sent to storage
-      console.log('Creating user with data:', {
-        username,
-        firstName,
-        lastName,
-        city,
-        state,
-        country,
-        avatar: avatarPath
-      });
 
       const user = await storage.createUser({
-        username: username.toLowerCase(), // Ensure username is always lowercase
+        username: username.toLowerCase(),
         password: hashedPassword,
         firstName,
         lastName,
@@ -172,38 +179,16 @@ export function setupAuth(app: Express) {
         avatar: avatarPath
       });
 
+      console.log('POST /api/register - Created new user:', user.id);
+
+      // Log the user in
       req.login(user, (err) => {
         if (err) return next(err);
+        console.log('Auto-login successful for new user:', user.id);
         res.status(201).json(user);
       });
     } catch (error) {
-      console.error('Registration error:', error);
-      // Clean up uploaded file if registration fails
-      if (req.file) {
-        try {
-          fs.unlinkSync(req.file.path);
-        } catch (cleanupError) {
-          console.error('Failed to clean up uploaded file:', cleanupError);
-        }
-      }
       next(error);
     }
-  });
-
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    console.log('Login successful, sending user data:', req.user);
-    res.status(200).json(req.user);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
-
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
   });
 }

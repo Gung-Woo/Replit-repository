@@ -31,26 +31,19 @@ export default function HomePage() {
   const [endFastNote, setEndFastNote] = useState("");
   const [showEndFastDialog, setShowEndFastDialog] = useState(false);
 
-  console.log('HomePage rendered, user:', user?.id); // Debug log
-
   // Only fetch fasts if we have a user
   const { data: fasts, isLoading: fastsLoading } = useQuery<Fast[]>({
-    queryKey: ["/api/fasts"],
+    queryKey: ["/api/fasts", user?.id],
     enabled: !!user,
   });
 
-  console.log('Fasts data:', fasts); // Debug log
-
   const activeFast = fasts?.find((f) => f.isActive);
-  console.log('Active fast:', activeFast); // Debug log
 
   // Only fetch meals if we have an active fast
   const { data: meals } = useQuery<Meal[]>({
-    queryKey: [`/api/fasts/${activeFast?.id}/meals`],
+    queryKey: ["/api/fasts", activeFast?.id, "meals"],
     enabled: !!activeFast,
   });
-
-  console.log('Meals data:', meals); // Debug log
 
   const startFastMutation = useMutation({
     mutationFn: async () => {
@@ -58,7 +51,7 @@ export default function HomePage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts", user?.id] });
       toast({ title: "Fast started successfully" });
     },
   });
@@ -73,7 +66,7 @@ export default function HomePage() {
     onSuccess: () => {
       setEndFastNote("");
       setShowEndFastDialog(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts", user?.id] });
       toast({ title: "Fast ended successfully" });
     },
   });
@@ -87,7 +80,7 @@ export default function HomePage() {
     },
     onSuccess: () => {
       setMealDescription("");
-      queryClient.invalidateQueries({ queryKey: [`/api/fasts/${activeFast?.id}/meals`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts", activeFast?.id, "meals"] });
       toast({ title: "Meal logged successfully" });
     },
   });
@@ -115,9 +108,16 @@ export default function HomePage() {
           <h1 className="text-2xl font-bold">TREat Tracker</h1>
           <div className="flex items-center gap-4">
             <span className="text-muted-foreground">
-              Welcome, {user?.firstName} (ID: {user?.id})
+              Welcome, {user.firstName}
             </span>
-            <Button variant="ghost" onClick={() => logoutMutation.mutate()}>
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                logoutMutation.mutate();
+                // Clear cache on logout to ensure no data persists
+                queryClient.clear();
+              }}
+            >
               Logout
             </Button>
           </div>

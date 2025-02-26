@@ -21,7 +21,7 @@ export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     console.log('Getting user by id:', id);
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    console.log('Found user:', user ? 'yes' : 'no');
+    console.log('Found user:', user ? user.username : 'not found');
     return user;
   }
 
@@ -31,8 +31,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(eq(users.username, username.toLowerCase()));
-
-    console.log('Found user:', user ? 'yes' : 'no');
+    console.log('Found user:', user ? user.username : 'not found');
     return user;
   }
 
@@ -42,18 +41,19 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values({...insertUser, username: insertUser.username.toLowerCase()})
       .returning();
-    console.log('Created user:', {...user, password: '[REDACTED]'});
+    console.log('Created user:', user.username, 'with ID:', user.id);
     return user;
   }
 
   async getFastById(id: number): Promise<Fast | undefined> {
     console.log('Getting fast by id:', id);
     const [fast] = await db.select().from(fasts).where(eq(fasts.id, id));
-    console.log('Found fast:', fast ? 'yes' : 'no');
+    console.log('Found fast:', fast ? {id: fast.id, userId: fast.userId} : 'not found');
     return fast;
   }
 
   async createFast(userId: number, startTime: Date): Promise<Fast> {
+    userId = Number(userId); // Ensure userId is numeric
     console.log('Creating fast for user:', userId);
     const [fast] = await db
       .insert(fasts)
@@ -63,22 +63,23 @@ export class DatabaseStorage implements IStorage {
         isActive: true,
       })
       .returning();
-    console.log('Created fast:', fast);
+    console.log('Created fast:', {id: fast.id, userId: fast.userId});
     return fast;
   }
 
   async getActiveFast(userId: number): Promise<Fast | undefined> {
-    console.log('Getting active fast for user:', userId, 'with type:', typeof userId);
+    userId = Number(userId); // Ensure userId is numeric
+    console.log('Getting active fast for user:', userId);
     const [fast] = await db
       .select()
       .from(fasts)
       .where(
         and(
-          eq(fasts.userId, Number(userId)), // Ensure userId is a number
+          eq(fasts.userId, userId),
           eq(fasts.isActive, true)
         )
       );
-    console.log('Found active fast:', fast);
+    console.log('Found active fast:', fast ? {id: fast.id, userId: fast.userId} : 'not found');
     return fast;
   }
 
@@ -89,18 +90,19 @@ export class DatabaseStorage implements IStorage {
       .set({ endTime, isActive: false, note: note || null })
       .where(eq(fasts.id, id))
       .returning();
-    console.log('Updated fast:', fast);
+    console.log('Updated fast:', {id: fast.id, userId: fast.userId});
     return fast;
   }
 
   async getFasts(userId: number): Promise<Fast[]> {
-    console.log('Getting all fasts for user:', userId, 'with type:', typeof userId);
+    userId = Number(userId); // Ensure userId is numeric
+    console.log('Getting all fasts for user:', userId);
     const userFasts = await db
       .select()
       .from(fasts)
-      .where(eq(fasts.userId, Number(userId))) // Ensure userId is a number
+      .where(eq(fasts.userId, userId))
       .orderBy(fasts.startTime);
-    console.log('Found fasts:', userFasts);
+    console.log('Found fasts:', userFasts.map(f => ({id: f.id, userId: f.userId})));
     return userFasts;
   }
 
@@ -114,7 +116,7 @@ export class DatabaseStorage implements IStorage {
         timestamp: new Date(),
       })
       .returning();
-    console.log('Created meal:', meal);
+    console.log('Created meal:', {id: meal.id, fastId: meal.fastId});
     return meal;
   }
 
@@ -125,7 +127,7 @@ export class DatabaseStorage implements IStorage {
       .from(meals)
       .where(eq(meals.fastId, fastId))
       .orderBy(meals.timestamp);
-    console.log('Found meals count:', fastMeals.length);
+    console.log('Found meals:', fastMeals.map(m => ({id: m.id, fastId: m.fastId})));
     return fastMeals;
   }
 }
