@@ -225,71 +225,59 @@ export default function HomePage() {
                         >
                           <span>{meal.description}</span>
                           <span className="text-sm text-muted-foreground">
-                            {typeof meal.mealTime === 'string' 
-                              ? new Date(meal.mealTime.includes('T') 
-                                  ? meal.mealTime 
-                                  : meal.mealTime.replace(' ', 'T')
-                                ).toLocaleString()
-                              : meal.mealTime instanceof Date 
-                                ? meal.mealTime.toLocaleString()
-                                : 'No time recorded'
-                            }
+                            {new Date(meal.mealTime).toLocaleString()}
                           </span>
                         </div>
                       ))}
+                      {!meals?.length && (
+                        <p className="text-sm text-muted-foreground">No meals logged yet</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Log a meal..."
+                        value={mealDescription}
+                        onChange={(e) => setMealDescription(e.target.value)}
+                        disabled={addMealMutation.isPending}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && mealDescription.trim() && !addMealMutation.isPending) {
+                            console.log("Adding meal via Enter key:", {
+                              fastId: activeFast!.id,
+                              description: mealDescription
+                            });
+                            addMealMutation.mutate({
+                              fastId: activeFast!.id,
+                              description: mealDescription.trim(),
+                            });
+                          }
+                        }}
+                      />
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          if (mealDescription.trim()) {
+                            console.log("Adding meal via button click:", {
+                              fastId: activeFast!.id,
+                              description: mealDescription
+                            });
+                            addMealMutation.mutate({
+                              fastId: activeFast!.id,
+                              description: mealDescription.trim(),
+                            });
+                          }
+                        }}
+                        disabled={addMealMutation.isPending || !mealDescription.trim()}
+                      >
+                        {addMealMutation.isPending ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Add Meal
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="pt-4">
-                    <Input
-                      placeholder="Log a meal..."
-                      value={mealDescription}
-                      onChange={(e) => setMealDescription(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && mealDescription) {
-                          console.log("Attempting to add meal:", {
-                            fastId: activeFast!.id,
-                            description: mealDescription
-                          });
-
-                          addMealMutation.mutate(
-                            {
-                              fastId: activeFast!.id,
-                              description: mealDescription,
-                            },
-                            {
-                              onError: (error) => {
-                                console.error("Failed to add meal:", error);
-                                toast({
-                                  title: "Failed to add meal",
-                                  description: error.message,
-                                  variant: "destructive"
-                                });
-                              }
-                            }
-                          );
-                        }
-                      }}
-                    />
-                    <Button 
-                      className="mt-2 w-full"
-                      onClick={() => {
-                        if (mealDescription) {
-                          addMealMutation.mutate({
-                            fastId: activeFast!.id,
-                            description: mealDescription,
-                          });
-                        }
-                      }}
-                      disabled={addMealMutation.isPending || !mealDescription}
-                    >
-                      {addMealMutation.isPending ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : null}
-                      Add Meal
-                    </Button>
                   </div>
-                </div>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   No active fast. Start one to begin tracking!
