@@ -107,20 +107,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMeal(fastId: number, description: string): Promise<Meal> {
-    console.log('Creating meal - Input:', { fastId, description });
+    console.log('Storage: Creating meal - Input:', { fastId, description });
     try {
+      const newMeal = {
+        fastId,
+        description,
+        mealTime: new Date()
+      };
+      console.log('Storage: Attempting to insert meal:', newMeal);
+
       const [meal] = await db
         .insert(meals)
-        .values({
-          fastId,
-          description,
-          mealTime: new Date() // Explicitly set mealTime
-        })
+        .values(newMeal)
         .returning();
-      console.log('Successfully created meal:', meal);
+
+      if (!meal) {
+        console.error('Storage: Meal insertion failed - no meal returned');
+        throw new Error('Failed to insert meal into database');
+      }
+
+      console.log('Storage: Successfully created meal:', meal);
       return meal;
     } catch (error) {
-      console.error('Error creating meal:', error);
+      console.error('Storage: Error creating meal:', error);
       throw error;
     }
   }

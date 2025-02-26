@@ -74,17 +74,33 @@ export default function HomePage() {
   // Update the mutation definition
   const addMealMutation = useMutation({
     mutationFn: async ({ fastId, description }: { fastId: number; description: string }) => {
-      console.log("Sending meal creation request:", { fastId, description });
-      const res = await apiRequest("POST", `/api/fasts/${fastId}/meals`, {
-        description,
-      });
-      const data = await res.json();
-      console.log("Meal creation response:", data);
-      return data;
+      console.log("Starting meal creation request:", { fastId, description });
+      try {
+        const res = await apiRequest("POST", `/api/fasts/${fastId}/meals`, {
+          description,
+        });
+        const data = await res.json();
+        console.log("Server response for meal creation:", data);
+        if (!data.id) {
+          throw new Error("Server returned success but meal was not created");
+        }
+        return data;
+      } catch (error) {
+        console.error("Error in meal creation:", error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("Meal creation succeeded:", data);
       setMealDescription("");
-      queryClient.invalidateQueries({ queryKey: ["/api/fasts", activeFast?.id, "meals"] });
+      // Specifically invalidate the meals query for this fast
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/fasts", activeFast?.id, "meals"]
+      });
+      // Also invalidate the fasts list to ensure everything is in sync
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/fasts"]
+      });
       toast({ title: "Meal logged successfully" });
     },
     onError: (error: Error) => {

@@ -123,14 +123,21 @@ export function registerRoutes(app: Express): Server {
 
     const userId = Number(req.user!.id);
     const fastId = Number(req.params.id);
-    console.log('POST /api/fasts/:id/meals - Input:', {
+    console.log('POST /api/fasts/:id/meals - Request:', {
       userId,
       fastId,
-      description: req.body.description
+      description: req.body.description,
+      body: req.body
     });
 
     try {
+      if (!req.body.description) {
+        console.log('Missing meal description');
+        return res.status(400).json({ message: "Meal description is required" });
+      }
+
       const fast = await storage.getFastById(fastId);
+      console.log('Found fast:', fast);
 
       if (!fast) {
         console.log('Fast not found:', fastId);
@@ -143,7 +150,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       const meal = await storage.createMeal(fastId, req.body.description);
-      console.log('Created meal:', meal);
+      console.log('Successfully created meal:', meal);
+
+      if (!meal || !meal.id) {
+        console.error('Meal creation failed - no meal returned');
+        return res.status(500).json({ message: "Failed to create meal" });
+      }
+
       res.json(meal);
     } catch (error) {
       console.error('Error creating meal:', error);
