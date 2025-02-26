@@ -197,7 +197,7 @@ export default function HomePage() {
                         >
                           <span>{meal.description}</span>
                           <span className="text-sm text-muted-foreground">
-                            {new Date(meal.timestamp.replace(' ', 'T')).toLocaleString()}
+                            {meal.timestamp ? new Date(meal.timestamp.replace(' ', 'T')).toLocaleString() : 'No timestamp'}
                           </span>
                         </div>
                       ))}
