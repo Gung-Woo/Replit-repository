@@ -113,7 +113,7 @@ export class DatabaseStorage implements IStorage {
       .values({
         fastId,
         description,
-        mealTime: new Date(), 
+        timestamp: new Date(),
       })
       .returning();
     console.log('Created meal:', {id: meal.id, fastId: meal.fastId});
@@ -126,11 +126,11 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(meals)
       .where(eq(meals.fastId, fastId))
-      .orderBy(meals.mealTime); 
+      .orderBy(meals.timestamp);
     console.log('Found meals:', fastMeals.map(m => ({
       id: m.id,
       fastId: m.fastId,
-      mealTime: m.mealTime instanceof Date ? m.mealTime.toISOString() : m.mealTime,
+      timestamp: m.timestamp instanceof Date ? m.timestamp.toISOString() : m.timestamp,
       description: m.description
     })));
     return fastMeals;
