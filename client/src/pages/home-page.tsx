@@ -33,14 +33,14 @@ export default function HomePage() {
 
   // Only fetch fasts if we have a user
   const { data: fasts, isLoading: fastsLoading } = useQuery<Fast[]>({
-    queryKey: ["/api/fasts", user?.id],
+    queryKey: ["/api/fasts"],
     enabled: !!user,
   });
 
   const activeFast = fasts?.find((f) => f.isActive);
 
   // Only fetch meals if we have an active fast
-  const { data: meals } = useQuery<Meal[]>({
+  const { data: meals, isLoading: mealsLoading } = useQuery<Meal[]>({
     queryKey: ["/api/fasts", activeFast?.id, "meals"],
     enabled: !!activeFast,
   });
@@ -51,7 +51,7 @@ export default function HomePage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/fasts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
       toast({ title: "Fast started successfully" });
     },
   });
@@ -66,12 +66,11 @@ export default function HomePage() {
     onSuccess: () => {
       setEndFastNote("");
       setShowEndFastDialog(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/fasts", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fasts"] });
       toast({ title: "Fast ended successfully" });
     },
   });
 
-  // Update the mutation definition
   const addMealMutation = useMutation({
     mutationFn: async ({ fastId, description }: { fastId: number; description: string }) => {
       console.log("Starting meal creation request:", { fastId, description });
@@ -140,11 +139,7 @@ export default function HomePage() {
             </span>
             <Button 
               variant="ghost" 
-              onClick={() => {
-                logoutMutation.mutate();
-                // Clear cache on logout to ensure no data persists
-                queryClient.clear();
-              }}
+              onClick={() => logoutMutation.mutate()}
             >
               Logout
             </Button>
@@ -217,22 +212,28 @@ export default function HomePage() {
                   {/* Meals Section */}
                   <div className="border-t pt-4 mt-4">
                     <h3 className="font-medium mb-2">Meals During Fast</h3>
-                    <div className="space-y-2 mb-4">
-                      {meals?.map((meal) => (
-                        <div
-                          key={meal.id}
-                          className="p-2 rounded-lg border flex justify-between items-center"
-                        >
-                          <span>{meal.description}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {new Date(meal.mealTime).toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                      {!meals?.length && (
-                        <p className="text-sm text-muted-foreground">No meals logged yet</p>
-                      )}
-                    </div>
+                    {mealsLoading ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <div className="space-y-2 mb-4">
+                        {meals?.map((meal) => (
+                          <div
+                            key={meal.id}
+                            className="p-2 rounded-lg border flex justify-between items-center"
+                          >
+                            <span>{meal.description}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(meal.mealTime).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                        {!meals?.length && (
+                          <p className="text-sm text-muted-foreground">No meals logged yet</p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="space-y-2">
                       <Input
@@ -276,8 +277,7 @@ export default function HomePage() {
                       </Button>
                     </div>
                   </div>
-
-                  </div>
+                </div>
               ) : (
                 <div className="text-center text-muted-foreground py-8">
                   No active fast. Start one to begin tracking!
