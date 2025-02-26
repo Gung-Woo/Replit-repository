@@ -20,14 +20,14 @@ export const fasts = pgTable("fasts", {
   startTime: timestamp("startTime").notNull(),
   endTime: timestamp("endTime"),
   isActive: boolean("isActive").notNull().default(true),
-  note: text("note"),  // Added note field
+  note: text("note"),
 });
 
 export const meals = pgTable("meals", {
   id: serial("id").primaryKey(),
   fastId: integer("fastId").notNull(),
   description: text("description").notNull(),
-  timestamp: timestamp("timestamp").notNull(),
+  mealTime: timestamp("mealTime").notNull(), 
 });
 
 export const insertUserSchema = createInsertSchema(users);
